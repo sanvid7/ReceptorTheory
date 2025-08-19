@@ -1,0 +1,287 @@
+html, body {
+  margin: 0;
+  padding: 0;
+}
+
+canvas {
+  display: block;
+}
+/* Existing styles for slider and other elements */
+
+/* Existing styles for slider and other elements */
+
+.slider-container, .inhibitor-slider-container {
+  position: relative;
+}
+
+/* Existing slider value styles */
+.slider-value {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #4CAF50;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 5px;
+  opacity: 0;
+  transition: opacity 0.2s, top 0.2s;
+  pointer-events: none;
+}
+
+/* Inhibitor slider value styles */
+.inhibitor-slider-container .slider-value {
+  background-color: #ff0000;
+  color: black;
+}
+
+/* White ball slider value styles */
+.white-ball-slider-container .slider-value {
+  background-color: #FFFFFF; /* White background */
+  color: black;               /* Black text for visibility */
+}
+
+/* Show slider value on active (dragging) */
+.slider:active + .slider-value,
+.inhibitor-slider:active + .slider-value{
+  opacity: 1;
+  top: -40px;
+}
+
+
+
+.button-base {
+  border-radius: 8px;
+  border-style: none;
+  box-sizing: border-box;
+  color: #FFFFFF;
+  cursor: pointer;
+  display: inline-block;
+  font-family: "Haas Grot Text R Web", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  height: 40px;
+  line-height: 20px;
+  list-style: none;
+  margin: 0;
+  outline: none;
+  padding: 10px 16px;
+  position: absolute;
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 100ms;
+  vertical-align: baseline;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  width: 180px;
+}
+
+.button-red {
+  background-color: #EA4C89;
+}
+
+.button-red:hover,
+.button-red:focus {
+  background-color: #F082AC;
+}
+
+.button-blue {
+  background-color: #4C89EA;
+}
+
+.button-blue:hover,
+.button-blue:focus {
+  background-color: #82ACF0;
+}
+
+#plotPointButton {
+  top: 460px;
+  left: 382px;
+}
+
+#plotGraphButton {
+  top: 460px;
+  left: 80px;
+}
+
+#ligandConcentration {
+  position: absolute;
+  left: 170px;
+  top: 520px;
+}
+
+/* Existing styles for slider /
+/ Custom Slider Styles */
+.slider-container {
+  width: 300px;
+  position: absolute;
+  left: 170px;
+  top: 600px;
+}
+
+.slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 15px;
+  border-radius: 5px;
+  background: #d3d3d3;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #4CAF50;
+  cursor: pointer;
+}
+
+.button-green {
+  background-color: #4CAF50;
+}
+
+.button-green:hover,
+.button-green:focus {
+  background-color: #45a049;
+}
+
+#continueButton {
+  top: 460px;
+  left: 80px;
+}
+
+
+.inhibitor-slider-container {
+  width: 300px;
+  position: absolute;
+  left: 170px;
+  top: 720px;
+}
+
+.inhibitor-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 15px;
+  border-radius: 5px;
+  background: #f0f0f0;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.inhibitor-slider:hover {
+  opacity: 1;
+}
+
+.inhibitor-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #ff0000;  /* Yellow color */
+  cursor: pointer;
+}
+
+.inhibitor-slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #FFD700;  /* Yellow color */
+  cursor: pointer;
+}
+
+.button-orange {
+  background-color: #FFA500;
+}
+
+.button-orange:hover,
+.button-orange:focus {
+  background-color: #FFB84D;
+}
+
+#plotInhibitorButton {
+  top: 460px;
+  left: 382px;
+}
+
+.white-ball-slider-container {
+  width: 300px;
+  position: absolute;
+  left: 170px;
+  top: 650px; /* Adjusted to be below the inhibitor slider */
+}
+
+.white-ball-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 15px;
+  border-radius: 5px;
+  background: #e0e0e0;
+  outline: none;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+}
+
+.white-ball-slider:hover {
+  opacity: 1;
+}
+
+.white-ball-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #FFFFFF;  /* White color */
+  cursor: pointer;
+}
+
+.white-ball-slider::-moz-range-thumb {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  background: #FFFFFF;  /* White color */
+  cursor: pointer;
+}
+
+/* Navigation Buttons */
+#prevButton, #nextButton {
+  position: absolute;
+  top: 20px; /* Adjust as needed */
+  padding: 10px 20px;
+  font-size: 16px;
+  margin: 0 10px;
+}
+
+#prevButton {
+  left: 50px; /* Adjust as needed */
+}
+
+#nextButton {
+  left: 150px; /* Adjust as needed */
+}
+
+#sceneText {
+  font-family: Arial, sans-serif;
+  font-size: 20px;
+  color: #000;
+}
