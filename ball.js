@@ -19,7 +19,7 @@ let rectangles = [
 ];
 
 // Constrain ball bouncing inside rect(640, 300, 1280, 305)
-let boundingBox = { x: 640, y: 300, w: 640, h: 310 };
+let boundingBox = { x: 640, y: 300, w: 640, h: 320 };
 
 /**
  * Allow sketch.js to change receptor layout per scene.
