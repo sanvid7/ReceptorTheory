@@ -280,6 +280,12 @@ canvas {
   left: 150px; /* Adjust as needed */
 }
 
+/* New: Fit Sigmoid button placement */
+#fitSigmoidButton {
+  top: 510px;   /* adjust if needed */
+  left: 80px;
+}
+
 #sceneText {
   font-family: Arial, sans-serif;
   font-size: 20px;

@@ -10,6 +10,8 @@ const sliderMin = 0;
 const sliderMax = TARGET_CONC_MAX;
 const yMin = 0;
 const yMax = 9;
+const MIN_POINTS = 5; // or whatever minimum you want
+
 
 let scene = 'achGraph'; // start on achGraph again
 let currentSceneIndex = 0;
@@ -32,6 +34,11 @@ let startTime = 0;
 let pointList = [];
 let attachmentTimes = [];
 let attachmentCount = 0;
+
+// Fit-button + fitted curve storage
+let fitButton;
+let fittedCurve = null; // { points: [{x,y}], params: {Emax, EC50, n, mse} }
+
 
 // Snapshots for comparison scene
 let achSnapshot = null;   // { label, color, points, curve }
@@ -148,6 +155,16 @@ function createActionButtons() {
   inhibitorButton.id('plotInhibitorButton');
   inhibitorButton.mousePressed(handleInhibitorButtonClick);
   inhibitorButton.class('button-base button-orange');
+  
+  // New: Fit Sigmoid button
+  fitButton = createButton('Fit Sigmoid');
+  fitButton.id('fitSigmoidButton');
+  fitButton.mousePressed(handleFitSigmoidClick);
+  fitButton.class('button-base button-blue');
+  
+  
+
+  
 }
 
 // ─────────────────────────────────────────────
@@ -241,12 +258,19 @@ function hideUIElements() {
   graphButton.hide();
   continueButton.hide();
   inhibitorSlider.hide();
+  inhibitorButton.hide();
+  fitButton.hide(); // NEW
 }
+
 
 function showUIElements() {
   slider.show();
   pointButton.show();
+  graphButton.show();
+  continueButton.show();
+  fitButton.show(); // NEW
 }
+
 
 // ─────────────────────────────────────────────
 function initializeScene(sceneName) {
@@ -259,6 +283,9 @@ function initializeScene(sceneName) {
   attachmentCount = 0;
   horizontalShift = 0;
   inhibitorButtonClicked = false;
+  fittedCurve = null;       // NEW: reset the fitted curve on scene change
+  lastBallCountChangeTime = millis(); // keep the rate window fresh
+  
   hideUIElements();
 
   switch (sceneName) {
@@ -337,6 +364,9 @@ function handlePointButtonClick() {
     pointList.push({ x: ghostPoint.x, y: ghostPoint.y, alpha: 255 });
     pointCounter++;
   }
+
+  fittedCurve = null; // clear previous fit when points change
+
 }
 
 function handleGraphButtonClick() {
@@ -391,7 +421,7 @@ function updateBallCount(sliderValue) {
       for (let i = 0; i < countToAdd; i++) {
         let position = possiblePlaces[(startIndex + i) % possiblePlaces.length];
         let velocity = p5.Vector.random2D();
-        velocity.setMag(1.5);
+        velocity.setMag(2.25);
         particles.push(new Ball(
           position,
           velocity,
@@ -532,6 +562,81 @@ function displayFunction(fn, type) {
     line(x1, y1, x2, y2);
   }
 }
+
+function handleFitSigmoidClick() {
+  const pts = (pointList || []).filter(p => p && isFinite(p.x) && isFinite(p.y) && p.x > 0);
+  if (pts.length < 3) {
+    alert('Plot at least 3 points before fitting.');
+    return;
+  }
+
+  const fit = fitHill(pts);
+  if (!fit) {
+    alert('Could not fit a curve to the current points.');
+    return;
+  }
+
+  fittedCurve = { points: sampleFittedCurve(fit, 1), params: fit };
+}
+
+// Hill model pieces
+function hillG(x, EC50, n) {
+  if (x <= 0) x = 1e-6;
+  return 1 / (1 + Math.pow(EC50 / x, n));
+}
+
+// For fixed (EC50, n), optimal Emax in least squares sense
+function bestEmax(points, EC50, n) {
+  let num = 0, den = 0;
+  for (const p of points) {
+    const g = hillG(p.x, EC50, n);
+    num += p.y * g;
+    den += g * g;
+  }
+  return den > 0 ? num / den : 0;
+}
+
+// Grid-search EC50 (log space) and n (linear) to minimize MSE
+function fitHill(points) {
+  const xMin = 1, xMax = TARGET_CONC_MAX;
+  const nMin = 0.5, nMax = 3.0;
+  const nSteps = 26;   // ~0.1 steps
+  const ecSteps = 30;  // log-spaced EC50
+
+  let best = null;
+  for (let i = 0; i < ecSteps; i++) {
+    const t = i / (ecSteps - 1);
+    const EC50 = Math.pow(10, Math.log10(xMin) + t * (Math.log10(xMax) - Math.log10(xMin)));
+    for (let j = 0; j < nSteps; j++) {
+      const n = nMin + (nMax - nMin) * (j / (nSteps - 1));
+      const Emax = bestEmax(points, EC50, n);
+
+      let sse = 0;
+      for (const p of points) {
+        const yhat = Emax * hillG(p.x, EC50, n);
+        const e = p.y - yhat;
+        sse += e * e;
+      }
+      const mse = sse / points.length;
+
+      if (!best || mse < best.mse) best = { Emax, EC50, n, mse };
+    }
+  }
+  return best;
+}
+
+// Build a smooth drawable polyline in SCREEN coords (left plot)
+function sampleFittedCurve(params, stepX = 1) {
+  const out = [];
+  for (let x = sliderMin; x <= sliderMax; x += stepX) {
+    const y = params.Emax * hillG(x, params.EC50, params.n);
+    const sx = map(x, sliderMin, sliderMax, 80, w - 80);
+    const sy = map(y, yMin, yMax, h - 80, 80);
+    out.push({ x: sx, y: sy });
+  }
+  return out;
+}
+
 
 function redrawGraph() {
   background(173, 216, 230);
@@ -697,6 +802,17 @@ function draw() {
         fill(255, 0, 0, point.alpha); ellipse(xCoord, yCoord, 10, 10);
       }
     }
+    
+    // Draw fitted curve if available
+    if (fittedCurve && fittedCurve.points?.length) {
+      stroke(0, 0, 255);
+      strokeWeight(3);
+      noFill();
+      beginShape();
+      for (const p of fittedCurve.points) vertex(p.x, p.y);
+      endShape();
+    }
+    
 
     frameCounter++;
     if (pointCounter >= 5) {
@@ -775,6 +891,17 @@ function draw() {
         fill(255, 0, 0, point.alpha); ellipse(xCoord, yCoord, 10, 10);
       }
     }
+    
+    // Draw fitted curve if available
+    if (fittedCurve && fittedCurve.points?.length) {
+      stroke(0, 0, 255);
+      strokeWeight(3);
+      noFill();
+      beginShape();
+      for (const p of fittedCurve.points) vertex(p.x, p.y);
+      endShape();
+    }
+    
 
     frameCounter++;
     if (pointCounter >= 5) {
