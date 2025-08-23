@@ -354,29 +354,37 @@ function updateSceneText() {
 function handlePointButtonClick() {
   detachAllLigands();
   resetLigandProperties();
-  let currentTime = millis();
-  let elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
-  let averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
 
-  if ((scene === 'achGraph' || scene === 'heartGraph') && pointCounter < 5) {
+  const currentTime = millis();
+  const elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
+  const averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
+
+  if (scene === 'achGraph' || scene === 'heartGraph') {
     ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
     ghostPoint.y = constrain(averageAttachments, yMin, yMax);
+
     pointList.push({ x: ghostPoint.x, y: ghostPoint.y, alpha: 255 });
-    pointCounter++;
+
+    // Keep counter consistent with array size; no hard cap
+    pointCounter = pointList.length;
+
+    // If you use these, reset plotted state so user can re-plot after adding points
+    graphPlotted = false;
+    if (typeof fittedCurve !== 'undefined') fittedCurve = null;
   }
-
-  fittedCurve = null; // clear previous fit when points change
-
 }
 
+
 function handleGraphButtonClick() {
-  if (pointList.length < 5) {
-    alert("Please plot at least 5 points before plotting the sigmoid.");
+  if (pointList.length < MIN_POINTS) {
+    alert(`Please plot at least ${MIN_POINTS} points before plotting.`);
     return;
   }
   graphPlotted = true;
-  redrawGraph();
+
+  redrawGraph()
 }
+
 
 function handleContinueButtonClick() {
   lastConc = particles.length;
@@ -787,21 +795,30 @@ function draw() {
     stroke(0); noFill();
     for (let a of particles) { a.bounceOthers(); a.update(); a.display(); }
 
-    if (pointCounter < 5) {
-      ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
-      ghostPoint.y = constrain(averageAttachments, yMin, yMax);
-      let ghostXCoord = map(ghostPoint.x, sliderMin, sliderMax, 80, w - 80);
-      let ghostYCoord = map(ghostPoint.y, yMin, yMax, h - 80, 80);
-      fill(255, 0, 0, ghostPoint.alpha); noStroke();
-      ellipse(ghostXCoord, ghostYCoord, 10, 10);
-    }
-    if (pointCounter > 0) {
+    // Always show the live ghost preview (optional: show only when not plotted)
+    ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
+    currentTime = millis();
+    elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
+    averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
+    ghostPoint.y = constrain(averageAttachments, yMin, yMax);
+
+    const ghostXCoord = map(ghostPoint.x, sliderMin, sliderMax, 80, w - 80);
+    const ghostYCoord = map(ghostPoint.y, yMin, yMax, h - 80, 80);
+    fill(255, 0, 0, ghostPoint.alpha);
+    noStroke();
+    ellipse(ghostXCoord, ghostYCoord, 10, 10);
+
+    // Draw all saved points (no cap)
+    if (pointList.length > 0) {
       for (let point of pointList) {
-        let xCoord = map(point.x, sliderMin, sliderMax, 80, w - 80);
-        let yCoord = map(point.y, yMin, yMax, h - 80, 80);
-        fill(255, 0, 0, point.alpha); ellipse(xCoord, yCoord, 10, 10);
+        const xCoord = map(point.x, sliderMin, sliderMax, 80, w - 80);
+        const yCoord = map(point.y, yMin, yMax, h - 80, 80);
+        fill(255, 0, 0, point.alpha);
+        noStroke();
+        ellipse(xCoord, yCoord, 10, 10);
       }
     }
+
     
     // Draw fitted curve if available
     if (fittedCurve && fittedCurve.points?.length) {
@@ -815,14 +832,20 @@ function draw() {
     
 
     frameCounter++;
-    if (pointCounter >= 5) {
+
+    // New: allow unlimited points, but require minimum before showing Graph button
+    if (pointList.length >= MIN_POINTS) {
       graphButton.show();
-      if (graphPlotted === true) {
-        graphButton.hide();
-        //displayFunction(f, 'ligand');
-        continueButton.show();
-      }
+    } else {
+      graphButton.hide();
     }
+    
+    if (graphPlotted === true) {
+      continueButton.show();
+    } else {
+      continueButton.hide();
+    }
+    
     return;
   }
 
@@ -876,19 +899,27 @@ function draw() {
     stroke(0); noFill();
     for (let a of particles) { a.bounceOthers(); a.update(); a.display(); }
 
-    if (pointCounter < 5) {
-      ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
-      ghostPoint.y = constrain(averageAttachments, yMin, yMax);
-      let ghostXCoord = map(ghostPoint.x, sliderMin, sliderMax, 80, w - 80);
-      let ghostYCoord = map(ghostPoint.y, yMin, yMax, h - 80, 80);
-      fill(255, 0, 0, ghostPoint.alpha); noStroke();
-      ellipse(ghostXCoord, ghostYCoord, 10, 10);
-    }
-    if (pointCounter > 0) {
+    // Always show the live ghost preview (optional: show only when not plotted)
+    ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
+    currentTime = millis();
+    elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
+    averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
+    ghostPoint.y = constrain(averageAttachments, yMin, yMax);
+
+    const ghostXCoord = map(ghostPoint.x, sliderMin, sliderMax, 80, w - 80);
+    const ghostYCoord = map(ghostPoint.y, yMin, yMax, h - 80, 80);
+    fill(255, 0, 0, ghostPoint.alpha);
+    noStroke();
+    ellipse(ghostXCoord, ghostYCoord, 10, 10);
+
+    // Draw all saved points (no cap)
+    if (pointList.length > 0) {
       for (let point of pointList) {
-        let xCoord = map(point.x, sliderMin, sliderMax, 80, w - 80);
-        let yCoord = map(point.y, yMin, yMax, h - 80, 80);
-        fill(255, 0, 0, point.alpha); ellipse(xCoord, yCoord, 10, 10);
+        const xCoord = map(point.x, sliderMin, sliderMax, 80, w - 80);
+        const yCoord = map(point.y, yMin, yMax, h - 80, 80);
+        fill(255, 0, 0, point.alpha);
+        noStroke();
+        ellipse(xCoord, yCoord, 10, 10);
       }
     }
     
@@ -904,14 +935,20 @@ function draw() {
     
 
     frameCounter++;
-    if (pointCounter >= 5) {
+
+    // New: allow unlimited points, but require minimum before showing Graph button
+    if (pointList.length >= MIN_POINTS) {
       graphButton.show();
-      if (graphPlotted === true) {
-        graphButton.hide();
-        //displayFunction(f, 'ligand');
-        continueButton.show();
-      }
+    } else {
+      graphButton.hide();
     }
+    
+    if (graphPlotted === true) {
+      continueButton.show();
+    } else {
+      continueButton.hide();
+    }
+    
     return;
   }
 
@@ -1032,3 +1069,5 @@ function mouseClicked() {
     }
   }
 }
+
+
