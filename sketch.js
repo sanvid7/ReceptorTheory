@@ -391,7 +391,7 @@ function updateBallCount(sliderValue) {
       for (let i = 0; i < countToAdd; i++) {
         let position = possiblePlaces[(startIndex + i) % possiblePlaces.length];
         let velocity = p5.Vector.random2D();
-        velocity.setMag(random(1, 2));
+        velocity.setMag(1.5);
         particles.push(new Ball(
           position,
           velocity,
