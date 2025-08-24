@@ -9,7 +9,7 @@ const TARGET_CONC_MAX = 400;
 const sliderMin = 1;
 const sliderMax = TARGET_CONC_MAX;
 const yMin = 0;
-const yMax = 9;
+const yMax = 14; //adjust graph height
 const MIN_POINTS = 5; // or whatever minimum you want
 
 
