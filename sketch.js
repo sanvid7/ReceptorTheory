@@ -198,7 +198,7 @@ function createCustomSlider(container, min, max, value, step, isInhibitor = fals
       let logMax = Math.log10(TARGET_CONC_MAX);
       let logValue = logMin + fraction * (logMax - logMin);
       concentration = Math.pow(10, logValue);
-      valueDisplay.html(`${Math.round(concentration)}`);
+      valueDisplay.html(`${desiredLigandCount()}`);
       detachAllLigands();
       resetLigandProperties();
       updateBallCount(sliderElement.value());
@@ -415,10 +415,15 @@ function handleInhibitorButtonClick() {
 // ─────────────────────────────────────────────
 // Ball Simulation Functions
 // ─────────────────────────────────────────────
+
+function desiredLigandCount() {
+  return Math.round(concentration); // or Math.floor(...) if you prefer
+}
+
 // Recreate ALL ligand balls on every slider move (preserve inhibitors)
 function updateBallCount() {
   // Desired ligand count from current concentration
-  const targetLigands = Math.floor(concentration);
+  const targetLigands = desiredLigandCount();
 
   // 1) Keep inhibitors only; drop all ligands
   const inhibitorsOnly = particles.filter(p => p.isInhibitor);
@@ -435,7 +440,7 @@ function updateBallCount() {
   for (let i = 0; i < targetLigands; i++) {
     const position = spots[(startIndex + i) % spots.length];
     const velocity = p5.Vector.random2D();
-    velocity.setMag(1.5); // base; Ball constructor multiplies by 5 => 7.5 px/frame
+    velocity.setMag(3); // base; Ball constructor multiplies by 5 => 7.5 px/frame
     particles.push(new Ball(
       position,
       velocity,
@@ -455,7 +460,7 @@ function reset(count = 1) {
   for (let i = 0; i < count; i++) {
     let position = possiblePlaces[i % possiblePlaces.length];
     let velocity = p5.Vector.random2D();
-    velocity.setMag(random(1, 2));
+    velocity.setMag(3);
     particles[i] = new Ball(
       position,
       velocity,
@@ -493,7 +498,7 @@ function addInhibitorBalls(count) {
   for (let i = 0; i < count; i++) {
     let position = possiblePlaces[(startIndex + i) % possiblePlaces.length];
     let velocity = p5.Vector.random2D();
-    velocity.setMag(random(1, 2));
+    velocity.setMag(3);
     particles.push(new Ball(
       position,
       velocity,
