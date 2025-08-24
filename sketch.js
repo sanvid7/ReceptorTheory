@@ -586,7 +586,7 @@ function displayFunction(fn, type) {
 function handleFitSigmoidClick() {
   const pts = (pointList || []).filter(p => p && isFinite(p.x) && isFinite(p.y) && p.x > 0);
   if (pts.length < 3) {
-    alert('Plot at least 3 points before fitting.');
+    alert('Plot at least 5 points before fitting.');
     return;
   }
 
