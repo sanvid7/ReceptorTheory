@@ -415,36 +415,39 @@ function handleInhibitorButtonClick() {
 // ─────────────────────────────────────────────
 // Ball Simulation Functions
 // ─────────────────────────────────────────────
-function updateBallCount(sliderValue) {
-  let newCount = Math.floor(concentration);
-  let currentCount = particles.length;
-  if (newCount !== currentCount) {
-    lastBallCountChangeTime = millis();
-    attachmentTimes = [];
-    totalAttachmentsSinceLastChange = 0;
-    if (newCount > currentCount) {
-      let countToAdd = newCount - currentCount;
-      let possiblePlaces = placeBalls()[0];
-      let startIndex = currentCount;
-      for (let i = 0; i < countToAdd; i++) {
-        let position = possiblePlaces[(startIndex + i) % possiblePlaces.length];
-        let velocity = p5.Vector.random2D();
-        velocity.setMag(2.25);
-        particles.push(new Ball(
-          position,
-          velocity,
-          radius,
-          startIndex + i,
-          particles,
-          ballColor,
-          follow
-        ));
-      }
-    } else if (newCount < currentCount) {
-      particles.splice(newCount, currentCount - newCount);
-    }
+// Recreate ALL ligand balls on every slider move (preserve inhibitors)
+function updateBallCount() {
+  // Desired ligand count from current concentration
+  const targetLigands = Math.floor(concentration);
+
+  // 1) Keep inhibitors only; drop all ligands
+  const inhibitorsOnly = particles.filter(p => p.isInhibitor);
+  particles = inhibitorsOnly;
+
+  // 2) Reset the attachments/sec window
+  lastBallCountChangeTime = millis();
+  attachmentTimes = [];
+  totalAttachmentsSinceLastChange = 0;
+
+  // 3) Spawn fresh ligands
+  const spots = placeBalls()[0];
+  const startIndex = particles.length; // continue ids after inhibitors
+  for (let i = 0; i < targetLigands; i++) {
+    const position = spots[(startIndex + i) % spots.length];
+    const velocity = p5.Vector.random2D();
+    velocity.setMag(1.5); // base; Ball constructor multiplies by 5 => 7.5 px/frame
+    particles.push(new Ball(
+      position,
+      velocity,
+      radius,
+      startIndex + i,
+      particles,
+      ballColor,
+      follow
+    ));
   }
 }
+
 
 function reset(count = 1) {
   let possiblePlaces = placeBalls()[0];
@@ -604,21 +607,27 @@ function bestEmax(points, EC50, n) {
   return den > 0 ? num / den : 0;
 }
 
-// Grid-search EC50 (log space) and n (linear) to minimize MSE
 function fitHill(points) {
   const xMin = 1, xMax = TARGET_CONC_MAX;
   const nMin = 0.5, nMax = 3.0;
   const nSteps = 26;   // ~0.1 steps
   const ecSteps = 30;  // log-spaced EC50
 
+  // NEW: check if user pinned Emax at x ≈ max
+  const pinnedEmax = getPinnedEmax(points, 1); // tol=1 unit around 400
   let best = null;
+
   for (let i = 0; i < ecSteps; i++) {
     const t = i / (ecSteps - 1);
     const EC50 = Math.pow(10, Math.log10(xMin) + t * (Math.log10(xMax) - Math.log10(xMin)));
+
     for (let j = 0; j < nSteps; j++) {
       const n = nMin + (nMax - nMin) * (j / (nSteps - 1));
-      const Emax = bestEmax(points, EC50, n);
 
+      // If pinned, use it; else compute LS-optimal Emax for this (EC50,n)
+      const Emax = (pinnedEmax !== null) ? pinnedEmax : bestEmax(points, EC50, n);
+
+      // Evaluate MSE
       let sse = 0;
       for (const p of points) {
         const yhat = Emax * hillG(p.x, EC50, n);
@@ -630,8 +639,9 @@ function fitHill(points) {
       if (!best || mse < best.mse) best = { Emax, EC50, n, mse };
     }
   }
-  return best;
+  return best; // {Emax, EC50, n, mse}
 }
+
 
 // Build a smooth drawable polyline in SCREEN coords (left plot)
 function sampleFittedCurve(params, stepX = 1) {
@@ -1068,6 +1078,14 @@ function mouseClicked() {
       initializeScene('achGraph');
     }
   }
+}
+
+// If there's a point at x ≈ TARGET_CONC_MAX, return its y (or the mean if multiple)
+function getPinnedEmax(points, tol = 1) {
+  const nearMax = points.filter(p => Math.abs(p.x - TARGET_CONC_MAX) <= tol);
+  if (nearMax.length === 0) return null;
+  const sum = nearMax.reduce((s, p) => s + p.y, 0);
+  return sum / nearMax.length;
 }
 
 
