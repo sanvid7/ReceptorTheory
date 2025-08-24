@@ -47,7 +47,7 @@ let heartSnapshot = null; // { label, color, points, curve }
 // UI Elements and Buttons
 let slider, inhibitorSlider;
 let pointButton, graphButton, continueButton, inhibitorButton;
-let nextButton, prevButton, sceneText;
+let sceneText;
 
 // Canvas/graphics variables
 let w = 640;
@@ -93,25 +93,13 @@ function setup() {
   // Respect the chosen scene at startup
   initializeScene(scene);
 
-  document.getElementById('nextButton').addEventListener('click', nextScene);
-  document.getElementById('prevButton').addEventListener('click', previousScene);
 }
 
 // ─────────────────────────────────────────────
 // UI Creation Functions
 // ─────────────────────────────────────────────
 function createNavigationButtons() {
-  prevButton = createButton('Previous');
-  prevButton.id('prevButton');
-  prevButton.mousePressed(handlePrevButtonClick);
-  prevButton.class('button-base button-blue');
-  prevButton.position(0, 20);
 
-  nextButton = createButton('Next');
-  nextButton.id('nextButton');
-  nextButton.mousePressed(handleNextButtonClick);
-  nextButton.class('button-base button-blue');
-  nextButton.position(430, 20);
 }
 
 function createSceneText() {
@@ -142,10 +130,6 @@ function createActionButtons() {
   pointButton.mousePressed(handlePointButtonClick);
   pointButton.class('button-base button-red');
 
-  graphButton = createButton('Plot Graph');
-  graphButton.id('plotGraphButton');
-  graphButton.mousePressed(handleGraphButtonClick);
-  graphButton.class('button-base button-blue');
 
   continueButton = createButton('Continue');
   continueButton.id('continueButton');
@@ -340,23 +324,11 @@ function initializeScene(sceneName) {
 }
 
 
-function nextScene() {
-  currentSceneIndex = (currentSceneIndex + 1) % scenes.length;
-  initializeScene(scenes[currentSceneIndex]);
-}
 
-function previousScene() {
-  currentSceneIndex = (currentSceneIndex - 1 + scenes.length) % scenes.length;
-  initializeScene(scenes[currentSceneIndex]);
-}
 
-function handleNextButtonClick() {
-  nextScene();
-}
 
-function handlePrevButtonClick() {
-  previousScene();
-}
+
+
 
 function updateSceneText() {
   if (sceneText) sceneText.html(`${scene}`);
@@ -388,16 +360,6 @@ function handlePointButtonClick() {
   }
 }
 
-
-function handleGraphButtonClick() {
-  if (pointList.length < MIN_POINTS) {
-    alert(`Please plot at least ${MIN_POINTS} points before plotting.`);
-    return;
-  }
-  graphPlotted = true;
-
-  redrawGraph()
-}
 
 
 function handleContinueButtonClick() {
