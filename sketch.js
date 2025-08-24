@@ -266,7 +266,6 @@ function getHeartLayout() {
 function hideUIElements() {
   slider.hide();
   pointButton.hide();
-  graphButton.hide();
   continueButton.hide();
   inhibitorSlider.hide();
   inhibitorButton.hide();
@@ -277,7 +276,6 @@ function hideUIElements() {
 function showUIElements() {
   slider.show();
   pointButton.show();
-  graphButton.show();
   continueButton.show();
   fitButton.show(); // NEW
 }
@@ -306,7 +304,6 @@ function initializeScene(sceneName) {
       }
       slider.show();
       pointButton.show();
-      graphButton.show();
       continueButton.show();
       inhibitorSlider.hide();
       inhibitorButton.hide();
@@ -319,7 +316,6 @@ function initializeScene(sceneName) {
       }
       slider.show();
       pointButton.show();
-      graphButton.show();
       continueButton.show();
       inhibitorSlider.hide();
       inhibitorButton.hide();
@@ -727,8 +723,16 @@ function drawBalls() {
 // snapshot of current points + smooth reference curve
 function snapshotCurrent(label, colorVal) {
   const pointsCopy = pointList.map(p => ({ x: p.x, y: p.y, alpha: p.alpha ?? 255 }));
-  return { label, color: colorVal, points: pointsCopy };
+  let curve = null;
+  if (fittedCurve && fittedCurve.params) {
+    curve = {
+      params: { ...fittedCurve.params },
+      polyline: (fittedCurve.points || []).map(pt => ({ x: pt.x, y: pt.y }))
+    };
+  }
+  return { label, color: colorVal, points: pointsCopy, curve };
 }
+
 
 
 function computeCurve(fn) {
@@ -746,14 +750,38 @@ function computeCurve(fn) {
 
 function drawSnapshot(snapshot) {
   if (!snapshot) return;
-  noStroke();
-  fill(snapshot.color);
-  for (const pt of snapshot.points || []) {
-    const xCoord = map(pt.x, sliderMin, sliderMax, 80, w - 80);
-    const yCoord = map(pt.y, yMin, yMax, h - 80, 80);
-    ellipse(xCoord, yCoord, 10, 10);
+
+  // 1) Points
+  if (snapshot.points?.length) {
+    noStroke();
+    fill(snapshot.color);
+    for (const pt of snapshot.points) {
+      const xCoord = map(pt.x, sliderMin, sliderMax, 80, w - 80);
+      const yCoord = map(pt.y, yMin, yMax, h - 80, 80);
+      ellipse(xCoord, yCoord, 8, 8);
+    }
+  }
+
+  // 2) Curve — resample from params for consistent resolution
+  if (snapshot.curve?.params) {
+    const poly = sampleFittedCurve(snapshot.curve.params, 1); // screen coords
+    noFill();
+    stroke(snapshot.color);
+    strokeWeight(3);
+    beginShape();
+    for (const p of poly) vertex(p.x, p.y);
+    endShape();
+  } else if (snapshot.curve?.polyline?.length) {
+    // fallback: draw stored polyline as-is
+    noFill();
+    stroke(snapshot.color);
+    strokeWeight(3);
+    beginShape();
+    for (const p of snapshot.curve.polyline) vertex(p.x, p.y);
+    endShape();
   }
 }
+
 
 
 // ─────────────────────────────────────────────
@@ -868,11 +896,6 @@ function draw() {
     frameCounter++;
 
     // New: allow unlimited points, but require minimum before showing Graph button
-    if (pointList.length >= MIN_POINTS) {
-      graphButton.show();
-    } else {
-      graphButton.hide();
-    }
     
     if (graphPlotted === true) {
       continueButton.show();
@@ -971,11 +994,6 @@ function draw() {
     frameCounter++;
 
     // New: allow unlimited points, but require minimum before showing Graph button
-    if (pointList.length >= MIN_POINTS) {
-      graphButton.show();
-    } else {
-      graphButton.hide();
-    }
     
     if (graphPlotted === true) {
       continueButton.show();
