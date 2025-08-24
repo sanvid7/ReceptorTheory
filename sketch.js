@@ -128,7 +128,8 @@ function createSceneText() {
 function createSliders() {
   // Main ligand slider (logarithmic-ish display)
   let sliderContainer = createDiv('');
-  slider = createCustomSlider(sliderContainer, 0, TARGET_CONC_MAX, TARGET_CONC_MAX / 2, 1);
+  slider = createCustomSlider(sliderContainer, 1, TARGET_CONC_MAX, 1, 1);
+
 
   // Inhibitor slider (linear)
   let inhibitorSliderContainer = createDiv('');
@@ -171,20 +172,27 @@ function createActionButtons() {
 // Custom Slider Creation (with Log Scale for main slider)
 // ─────────────────────────────────────────────
 function createCustomSlider(container, min, max, value, step, isInhibitor = false) {
-  let sliderContainer = createDiv('');
+  const sliderContainer = createDiv('');
   sliderContainer.class(isInhibitor ? 'inhibitor-slider-container' : 'slider-container');
 
-  let sliderElement = createSlider(min, max, value, step);
+  const sliderElement = createSlider(min, max, value, step);
   sliderElement.class(isInhibitor ? 'inhibitor-slider' : 'slider');
   sliderElement.parent(sliderContainer);
 
-  let valueDisplay = createDiv('0');
+  const valueDisplay = createDiv('0');
   valueDisplay.class('slider-value');
   valueDisplay.parent(sliderContainer);
 
+  // cache the range you passed in
+  const minVal = min;
+  const maxVal = max;
+
   sliderElement.input(() => {
+    const raw = sliderElement.value();
+
     if (isInhibitor) {
-      inhibitorConcentration = sliderElement.value();
+      // Linear: 0 → max
+      inhibitorConcentration = raw;
       valueDisplay.html(`${Math.round(inhibitorConcentration)}`);
       updateInhibitorCount(Math.floor(inhibitorConcentration));
       horizontalShift = map(inhibitorConcentration, 0, 150, -4, 4);
@@ -192,22 +200,24 @@ function createCustomSlider(container, min, max, value, step, isInhibitor = fals
       detachAllLigands();
       resetLigandProperties();
     } else {
-      // Logarithmic mapping for the main ligand slider
-      let fraction = map(sliderElement.value(), 0, TARGET_CONC_MAX, 0, 1);
-      let logMin = 0; // log10(1) = 0
-      let logMax = Math.log10(TARGET_CONC_MAX);
-      let logValue = logMin + fraction * (logMax - logMin);
+      // Logarithmic: map [minVal, maxVal] → [0,1]
+      const fraction = (raw - minVal) / (maxVal - minVal); // now 0 at raw=minVal, 1 at raw=maxVal
+      const logMin = Math.log10(1);                       // = 0
+      const logMax = Math.log10(TARGET_CONC_MAX);         // e.g., log10(400)
+      const logValue = logMin + fraction * (logMax - logMin);
       concentration = Math.pow(10, logValue);
-      valueDisplay.html(`${desiredLigandCount()}`);
+
+      valueDisplay.html(`${Math.round(concentration)}`);
       detachAllLigands();
       resetLigandProperties();
-      updateBallCount(sliderElement.value());
+      updateBallCount(); // no need to pass raw
     }
   });
 
   sliderContainer.parent(container);
   return sliderElement;
 }
+
 
 // ─────────────────────────────────────────────
 // Receptor Layout Helpers
