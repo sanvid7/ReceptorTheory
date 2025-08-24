@@ -160,11 +160,22 @@ Ball.prototype.handleAttachment = function (rectIndex) {
 };
 
 Ball.prototype.detachFromRectangle = function (rectIndex) {
-  this.velocity = this.storedVelocity ? this.storedVelocity.copy() : createVector(0, 0);
+  // Keep the same speed as storedVelocity
+  const speed = this.storedVelocity ? this.storedVelocity.mag() : 0;
+
+  // Generate a random direction
+  let randomDir = p5.Vector.random2D();
+  randomDir.setMag(speed); // same magnitude as before
+
+  // Assign this as the new velocity
+  this.velocity = randomDir;
+
+  // Clear receptor slot
   attachedLigands[rectIndex] = null;
   this.attachedRectIndex = -1;
   this.gracePeriod = graceDuration;
 };
+
 
 Ball.prototype.handleBoundingBoxCollisions = function () {
   if (this.position.x > boundingBox.x + boundingBox.w - this.r) {
