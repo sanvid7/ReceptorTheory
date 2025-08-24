@@ -6,7 +6,7 @@
 // Global Constants and Variables
 // ─────────────────────────────────────────────
 const TARGET_CONC_MAX = 400;
-const sliderMin = 0;
+const sliderMin = 1;
 const sliderMax = TARGET_CONC_MAX;
 const yMin = 0;
 const yMax = 9;
@@ -611,6 +611,7 @@ function handleFitSigmoidClick() {
   }
 
   fittedCurve = { points: sampleFittedCurve(fit, 1), params: fit };
+  graphPlotted = true
 }
 
 // Hill model pieces
