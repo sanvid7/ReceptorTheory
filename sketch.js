@@ -13,9 +13,9 @@ const yMax = 14; //adjust graph height
 const MIN_POINTS = 5; // or whatever minimum you want
 
 
-let scene = 'achGraph'; // start on achGraph again
+let scene = 'intro'; // start on achGraph again
 let currentSceneIndex = 0;
-const scenes = ['achGraph', 'inhibitor', 'partialAgonists', 'spareReceptors', 'heartGraph', 'compareGraphs'];
+const scenes = ['intro', 'achGraph', 'inhibitor', 'partialAgonists', 'spareReceptors', 'heartGraph', 'compareGraphs'];
 
 let lastBallCountChangeTime = 0;
 let totalAttachmentsSinceLastChange = 0;
@@ -47,7 +47,7 @@ let heartSnapshot = null; // { label, color, points, curve }
 // UI Elements and Buttons
 let slider, inhibitorSlider;
 let pointButton, graphButton, continueButton, inhibitorButton;
-let sceneText;
+let clarkButton, mrtButton, compareButton;
 
 // Canvas/graphics variables
 let w = 640;
@@ -84,7 +84,6 @@ function setup() {
   createCanvas(1280, 720);
   startTime = millis();
   createNavigationButtons();
-  createSceneText();
   createSliders();
   createActionButtons();
   hideUIElements();
@@ -102,16 +101,6 @@ function createNavigationButtons() {
 
 }
 
-function createSceneText() {
-  sceneText = createDiv('');
-  sceneText.id('sceneText');
-  sceneText.style('position', 'absolute');
-  sceneText.style('top', '30px');
-  sceneText.style('left', '275px');
-  sceneText.style('font-size', '20px');
-  sceneText.style('color', '#000');
-  updateSceneText();
-}
 
 function createSliders() {
   // Main ligand slider (logarithmic-ish display)
@@ -125,11 +114,37 @@ function createSliders() {
 }
 
 function createActionButtons() {
+
+    // Intro menu buttons
+  clarkButton = createButton('Clark');
+  clarkButton.id('clarkButton');
+  clarkButton.class('button-base button-blue');
+  clarkButton.position(width/2 - 90, 200); 
+  clarkButton.mousePressed(() => {
+    scene = 'achGraph';
+    initializeScene('achGraph');
+  });
+
+  mrtButton = createButton('MRT');
+  mrtButton.id('mrtButton');
+  mrtButton.class('button-base button-blue');
+  mrtButton.position(width/2 - 90, 300);
+  mrtButton.mousePressed(() => {
+    // do nothing for now
+  });
+
+  compareButton = createButton('Clark vs MRT');
+  compareButton.id('compareButton');
+  compareButton.class('button-base button-blue');
+  compareButton.position(width/2 - 90, 400);
+  compareButton.mousePressed(() => {
+    // do nothing for now
+  });
+
   pointButton = createButton('Plot Point');
   pointButton.id('plotPointButton');
   pointButton.mousePressed(handlePointButtonClick);
   pointButton.class('button-base button-red');
-
 
   continueButton = createButton('Continue');
   continueButton.id('continueButton');
@@ -254,6 +269,10 @@ function hideUIElements() {
   inhibitorSlider.hide();
   inhibitorButton.hide();
   fitButton.hide(); // NEW
+  if (clarkButton) clarkButton.hide();
+  if (mrtButton) mrtButton.hide();
+  if (compareButton) compareButton.hide();
+
 }
 
 
@@ -310,6 +329,15 @@ function initializeScene(sceneName) {
       hideUIElements();
       break;
     }
+
+    case 'intro': {
+      hideUIElements();
+      if (clarkButton) clarkButton.show();
+      if (mrtButton) mrtButton.show();
+      if (compareButton) compareButton.show();
+      break;
+    }
+    
     default:
       break;
   }
@@ -324,15 +352,15 @@ function initializeScene(sceneName) {
 }
 
 
+function drawIntroScene() {
+  background(173, 216, 230);
+  textAlign(CENTER);
+  textSize(32);
+  fill(0);
+  text("Choose a Mode", width/2, 150);
 
-
-
-
-
-
-function updateSceneText() {
-  if (sceneText) sceneText.html(`${scene}`);
 }
+
 
 // ─────────────────────────────────────────────
 // Button and Slider Event Handlers
@@ -767,6 +795,12 @@ function u(x) {
 // ─────────────────────────────────────────────
 function draw() {
   // ACH GRAPH — keeps VESSEL and 4 receptors
+
+  if (scene === 'intro') {
+    drawIntroScene();
+    return;
+  }
+  
   if (scene === 'achGraph') {
     showUIElements();
 
