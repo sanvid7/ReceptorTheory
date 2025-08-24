@@ -333,9 +333,16 @@ function initializeScene(sceneName) {
     default:
       break;
   }
+
+  // Force an initial spawn when entering graph scenes
+  if (sceneName === 'achGraph' || sceneName === 'heartGraph') {
+    concentration = 1;
+    updateBallCount();   // this creates the first ball
+  }
+
   scene = sceneName;
-  updateSceneText();
 }
+
 
 function nextScene() {
   currentSceneIndex = (currentSceneIndex + 1) % scenes.length;
@@ -1103,5 +1110,3 @@ function getPinnedEmax(points, tol = 1) {
   const sum = nearMax.reduce((s, p) => s + p.y, 0);
   return sum / nearMax.length;
 }
-
-
