@@ -13,7 +13,7 @@ const yMax = 14; //adjust graph height
 const MIN_POINTS = 5; // or whatever minimum you want
 
 
-let scene = 'intro'; // start on achGraph again
+let scene = 'achGraph'; // start on achGraph again
 let currentSceneIndex = 0;
 const scenes = ['intro', 'achGraph', 'inhibitor', 'partialAgonists', 'spareReceptors', 'heartGraph', 'compareGraphs'];
 
@@ -53,7 +53,7 @@ let clarkButton, mrtButton, compareButton;
 let w = 640;
 let h = 500;
 let unit = 20;
-let muscleStrip, membrane, receptor, gpcr, vessel, heart;
+let muscleStrip, membrane, receptor, gpcr, Diaphragm, Smallintestine;
 let AchBackgroundX = 0;
 let fade = 0;
 
@@ -76,8 +76,8 @@ function preload() {
   membrane = loadImage('membrane.png');
   receptor = loadImage('receptor.png');
   gpcr = loadImage('gpcr.png');
-  vessel = loadImage('vessel.png');
-  heart = loadImage('heart.png');
+  Diaphragm = loadImage('Diaphragm.png');
+  Smallintestine = loadImage('Smallintestine.png');
 }
 
 function setup() {
@@ -234,7 +234,7 @@ function getAchRectangles() {
 // 6 GPCRs in a single horizontal line for heartGraph.
 // Sprites are smaller so all six fit; binding rectangles remain 10×20.
 function getHeartLayout() {
-  const left = 680;   // leftmost sprite x
+  const left = 660;   // leftmost sprite x
   const right = 1240; // rightmost boundary to stay inside the membrane
   const y = 560;      // vertical position of the GPCR row
   const count = 6;
@@ -828,7 +828,7 @@ function draw() {
     text(`Ligand Concentration: ${Math.round(concentration)}`, 320, 650);
     text(`Average Attachments per second: ${averageAttachments.toFixed(2)}`, 320, 680);
 
-    image(vessel, 660, 10, 600, 400);
+    image(Diaphragm, 735, 10, 450, 250);
 
     noFill(); stroke(255, 255, 102);
     rect(945, 80, 30, 30);
@@ -931,7 +931,7 @@ function draw() {
     text(`Average Attachments per second: ${averageAttachments.toFixed(2)}`, 320, 680);
 
     // Replace vessel with heart
-    image(heart, 660, 10, 600, 400);
+    image(Smallintestine, 740, -20, 400, 300);
 
     noFill(); stroke(255, 255, 102);
     rect(945, 80, 30, 30);
