@@ -68,6 +68,68 @@ let follow = false;
 // Ghost point used in graph scenes
 let ghostPoint = { x: 0, y: 0, alpha: 100 };
 
+// --- Receptor occupancy tracking tied to the existing timer window ---
+let occSlots = []; // [{bound:boolean, lastChangeMs:number, cumBoundMs:number}]
+
+function initOccupancySlots(count) {
+  const now = millis();
+  occSlots = new Array(count).fill(null).map((_, i) => ({
+    bound:
+      (typeof attachedLigands !== 'undefined' && attachedLigands[i] != null),
+    lastChangeMs: now,
+    cumBoundMs: 0
+  }));
+}
+
+// Reset accumulation for the current timing window, preserving current bound state
+function resetOccupancyWindow() {
+  const now = millis();
+  for (let i = 0; i < occSlots.length; i++) {
+    if (!occSlots[i]) continue;
+    occSlots[i].cumBoundMs = 0;
+    occSlots[i].lastChangeMs = now; // start counting from window start
+  }
+}
+
+// Hooks called by ball.js on state changes
+function markReceptorBound(i, nowMs) {
+  if (!occSlots[i]) return;
+  if (!occSlots[i].bound) {
+    occSlots[i].bound = true;
+    occSlots[i].lastChangeMs = nowMs;
+  }
+}
+
+function markReceptorUnbound(i, nowMs) {
+  if (!occSlots[i]) return;
+  if (occSlots[i].bound) {
+    occSlots[i].cumBoundMs += (nowMs - occSlots[i].lastChangeMs);
+    occSlots[i].bound = false;
+    occSlots[i].lastChangeMs = nowMs;
+  }
+}
+
+// Sum of bound ms across all receptors in the current window
+function getTotalBoundMs(nowMs) {
+  let total = 0;
+  for (const s of occSlots) {
+    if (!s) continue;
+    total += s.cumBoundMs + (s.bound ? (nowMs - s.lastChangeMs) : 0);
+  }
+  return total;
+}
+
+// Always normalize as if 8 receptors is the max (for spare receptor demo)
+function getNormalizedOccupancyFraction() {
+  const now = millis();
+  const elapsedMs = now - lastBallCountChangeTime; // timer unchanged (your code)
+  if (elapsedMs <= 0) return 0;
+  const totalBound = getTotalBoundMs(now); // ms across all receptors
+  const maxPossible = elapsedMs * 8;       // normalize to 8 receptors
+  return totalBound / maxPossible;         // 0..1
+}
+
+
 // ─────────────────────────────────────────────
 // p5.js Preload and Setup
 // ─────────────────────────────────────────────
@@ -297,6 +359,10 @@ function initializeScene(sceneName) {
   inhibitorButtonClicked = false;
   fittedCurve = null;       // NEW: reset the fitted curve on scene change
   lastBallCountChangeTime = millis(); // keep the rate window fresh
+
+  // NEW: reset occupancy accumulation window to match the timer
+  if (typeof resetOccupancyWindow === 'function') resetOccupancyWindow();
+
   
   hideUIElements();
 
@@ -371,22 +437,25 @@ function handlePointButtonClick() {
 
   const currentTime = millis();
   const elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
-  const averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
 
   if (scene === 'achGraph' || scene === 'heartGraph') {
+    // x: current concentration (keep as before)
     ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
-    ghostPoint.y = constrain(averageAttachments, yMin, yMax);
 
-    pointList.push({ x: ghostPoint.x, y: ghostPoint.y, alpha: 255 });
+    // y: normalized occupancy fraction scaled to axis
+    const respFraction = getNormalizedOccupancyFraction(); // 0..1
+    const yLock = constrain(respFraction * yMax, yMin, yMax);
 
-    // Keep counter consistent with array size; no hard cap
+    ghostPoint.y = yLock;
+    pointList.push({ x: ghostPoint.x, y: yLock, alpha: 255 });
+
+    // Keep your existing downstream behavior
     pointCounter = pointList.length;
-
-    // If you use these, reset plotted state so user can re-plot after adding points
     graphPlotted = false;
     if (typeof fittedCurve !== 'undefined') fittedCurve = null;
   }
 }
+
 
 
 
@@ -437,6 +506,10 @@ function updateBallCount() {
   lastBallCountChangeTime = millis();
   attachmentTimes = [];
   totalAttachmentsSinceLastChange = 0;
+
+    // NEW: reset occupancy accumulation window to match the timer
+  if (typeof resetOccupancyWindow === 'function') resetOccupancyWindow();
+
 
   // 3) Spawn fresh ligands
   const spots = placeBalls()[0];
@@ -794,16 +867,23 @@ function u(x) {
 // p5.js Draw Loop
 // ─────────────────────────────────────────────
 function draw() {
-  // ACH GRAPH — keeps VESSEL and 4 receptors
-
+  // INTRO
   if (scene === 'intro') {
     drawIntroScene();
     return;
   }
-  
+
+  // ACH GRAPH — vessel + 4 receptors
   if (scene === 'achGraph') {
     showUIElements();
 
+    // ── one-time per-frame timing + response (keep timer usage the same)
+    const currentTime = millis();
+    const elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000; // unchanged window
+    const respFraction = getNormalizedOccupancyFraction(); // 0..1 vs 8 receptors
+    const respScaled   = constrain(respFraction * yMax, yMin, yMax);
+
+    // Left grid / axes
     background(173, 216, 230);
     stroke(255, 0, 0); strokeWeight(3);
     line(640, 0, 640, 720);
@@ -819,15 +899,12 @@ function draw() {
     line(80, h - 80, w - 80, h - 80);
     line(80, 80, 80, h - 80);
 
-    noStroke(); textSize(25); fill(180);
-    let currentTime = millis();
-    let elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
-    let averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
-
-    textSize(20); textAlign(CENTER);
+    // HUD text (unchanged positions; new metric)
+    noStroke(); textSize(20); fill(180); textAlign(CENTER);
     text(`Ligand Concentration: ${Math.round(concentration)}`, 320, 650);
-    text(`Average Attachments per second: ${averageAttachments.toFixed(2)}`, 320, 680);
+    text(`Response (occupancy vs 8): ${(respFraction * 100).toFixed(1)}%`, 320, 680);
 
+    // Right visuals
     image(vessel, 660, 10, 600, 400);
 
     noFill(); stroke(255, 255, 102);
@@ -850,23 +927,20 @@ function draw() {
     rect(1095, 555, 10, 20);
     rect(1225, 555, 10, 20);
 
+    // Particles
     stroke(0); noFill();
     for (let a of particles) { a.bounceOthers(); a.update(); a.display(); }
 
-    // Always show the live ghost preview (optional: show only when not plotted)
+    // Ghost point (deduped calc)
     ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
-    currentTime = millis();
-    elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
-    averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
-    ghostPoint.y = constrain(averageAttachments, yMin, yMax);
-
+    ghostPoint.y = respScaled;
     const ghostXCoord = map(ghostPoint.x, sliderMin, sliderMax, 80, w - 80);
     const ghostYCoord = map(ghostPoint.y, yMin, yMax, h - 80, 80);
     fill(255, 0, 0, ghostPoint.alpha);
     noStroke();
     ellipse(ghostXCoord, ghostYCoord, 10, 10);
 
-    // Draw all saved points (no cap)
+    // Saved points
     if (pointList.length > 0) {
       for (let point of pointList) {
         const xCoord = map(point.x, sliderMin, sliderMax, 80, w - 80);
@@ -877,8 +951,7 @@ function draw() {
       }
     }
 
-    
-    // Draw fitted curve if available
+    // Fitted curve (if any)
     if (fittedCurve && fittedCurve.points?.length) {
       stroke(0, 0, 255);
       strokeWeight(3);
@@ -887,25 +960,27 @@ function draw() {
       for (const p of fittedCurve.points) vertex(p.x, p.y);
       endShape();
     }
-    
 
     frameCounter++;
 
-    // New: allow unlimited points, but require minimum before showing Graph button
-    
-    if (graphPlotted === true) {
-      continueButton.show();
-    } else {
-      continueButton.hide();
-    }
-    
+    // Continue button visibility
+    if (graphPlotted === true) continueButton.show();
+    else continueButton.hide();
+
     return;
   }
 
-  // HEART GRAPH — replaces VESSEL with HEART and draws 6 small GPCRs in a straight line
+  // HEART GRAPH — heart + 6 receptors in a row
   if (scene === 'heartGraph') {
     showUIElements();
 
+    // ── one-time per-frame timing + response (keep timer usage the same)
+    const currentTime = millis();
+    const elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000; // unchanged window
+    const respFraction = getNormalizedOccupancyFraction(); // 0..1 vs 8 receptors
+    const respScaled   = constrain(respFraction * yMax, yMin, yMax);
+
+    // Left grid / axes
     background(173, 216, 230);
     stroke(255, 0, 0); strokeWeight(3);
     line(640, 0, 640, 720);
@@ -921,16 +996,12 @@ function draw() {
     line(80, h - 80, w - 80, h - 80);
     line(80, 80, 80, h - 80);
 
-    noStroke(); textSize(25); fill(180);
-    let currentTime = millis();
-    let elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
-    let averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
-
-    textSize(20); textAlign(CENTER);
+    // HUD text (unchanged positions; new metric)
+    noStroke(); textSize(20); fill(180); textAlign(CENTER);
     text(`Ligand Concentration: ${Math.round(concentration)}`, 320, 650);
-    text(`Average Attachments per second: ${averageAttachments.toFixed(2)}`, 320, 680);
+    text(`Response (occupancy vs 8): ${(respFraction * 100).toFixed(1)}%`, 320, 680);
 
-    // Replace vessel with heart
+    // Right visuals (heart)
     image(heart, 660, 10, 600, 400);
 
     noFill(); stroke(255, 255, 102);
@@ -941,7 +1012,7 @@ function draw() {
 
     image(sarcolemma, 640, 300, 640, 640);
 
-    // 6 GPCRs (smaller) in one line + binding rectangles (10×20)
+    // 6 GPCRs (smaller) + binding rectangles
     {
       const { gpcrPos, rects, size } = getHeartLayout();
       for (const p of gpcrPos) image(gpcr, p.x, p.y, size, size);
@@ -949,23 +1020,20 @@ function draw() {
       for (const r of rects) rect(r.x, r.y, r.w, r.h);
     }
 
+    // Particles
     stroke(0); noFill();
     for (let a of particles) { a.bounceOthers(); a.update(); a.display(); }
 
-    // Always show the live ghost preview (optional: show only when not plotted)
+    // Ghost point (deduped calc)
     ghostPoint.x = constrain(slider.value(), sliderMin, sliderMax);
-    currentTime = millis();
-    elapsedSeconds = (currentTime - lastBallCountChangeTime) / 1000;
-    averageAttachments = elapsedSeconds > 0 ? attachmentTimes.length / elapsedSeconds : 0;
-    ghostPoint.y = constrain(averageAttachments, yMin, yMax);
-
+    ghostPoint.y = respScaled;
     const ghostXCoord = map(ghostPoint.x, sliderMin, sliderMax, 80, w - 80);
     const ghostYCoord = map(ghostPoint.y, yMin, yMax, h - 80, 80);
     fill(255, 0, 0, ghostPoint.alpha);
     noStroke();
     ellipse(ghostXCoord, ghostYCoord, 10, 10);
 
-    // Draw all saved points (no cap)
+    // Saved points
     if (pointList.length > 0) {
       for (let point of pointList) {
         const xCoord = map(point.x, sliderMin, sliderMax, 80, w - 80);
@@ -975,8 +1043,8 @@ function draw() {
         ellipse(xCoord, yCoord, 10, 10);
       }
     }
-    
-    // Draw fitted curve if available
+
+    // Fitted curve (if any)
     if (fittedCurve && fittedCurve.points?.length) {
       stroke(0, 0, 255);
       strokeWeight(3);
@@ -985,28 +1053,23 @@ function draw() {
       for (const p of fittedCurve.points) vertex(p.x, p.y);
       endShape();
     }
-    
 
     frameCounter++;
 
-    // New: allow unlimited points, but require minimum before showing Graph button
-    
-    if (graphPlotted === true) {
-      continueButton.show();
-    } else {
-      continueButton.hide();
-    }
-    
+    // Continue button visibility
+    if (graphPlotted === true) continueButton.show();
+    else continueButton.hide();
+
     return;
   }
 
-  // COMPARE GRAPHS — white-out right pane, overlay ACH vs HEART on the left plot
+  // COMPARE GRAPHS — overlay ACH vs HEART on left plot
   if (scene === 'compareGraphs') {
     background(173, 216, 230);
     stroke(255, 0, 0); strokeWeight(3);
     line(640, 0, 640, 720);
 
-    // Left plot area (same grid/axes)
+    // Left plot area
     fill(255); noStroke();
     rect(0, 0, 640, 720);
     stroke(180); strokeWeight(1);
@@ -1038,8 +1101,9 @@ function draw() {
     return;
   }
 
-  // Other scenes (if you add them later)
+  // (other scenes if you add them later)
 }
+
 
 // ─────────────────────────────────────────────
 // Additional Scene Draw Functions

@@ -28,7 +28,11 @@ let boundingBox = { x: 640, y: 300, w: 640, h: 320 };
 function setReceptorLayout(rects) {
   rectangles = Array.isArray(rects) ? rects.slice() : rectangles;
   attachedLigands = new Array(rectangles.length).fill(null);
+
+  // NEW: inform sketch.js so occupancy slots match receptor count
+  if (typeof initOccupancySlots === 'function') initOccupancySlots(rectangles.length);
 }
+
 
 // -------------------------------
 // Ball class
@@ -140,13 +144,29 @@ Ball.prototype.bounceOffRectangle = function (rect) {
   }
 };
 
+// ===============================
+// ball.js — FINAL versions
+// ===============================
+
+// ATTACH: unchanged logic + NEW occupancy hook
 Ball.prototype.attachToRectangle = function (rectIndex) {
+  // (existing) store current velocity so we can relaunch with same speed later
   this.storedVelocity = this.velocity.copy();
+
+  // (existing) animate into the receptor center
   let rect = rectangles[rectIndex];
   this.startAnimation(createVector(rect.x + rect.w / 2, rect.y + rect.h / 2));
+
+  // (existing) mark slot occupied
   attachedLigands[rectIndex] = this;
   this.attachedRectIndex = rectIndex;
 
+  // NEW: notify occupancy tracker that this receptor just became bound
+  if (typeof markReceptorBound === 'function' && Number.isInteger(rectIndex) && rectIndex >= 0) {
+    markReceptorBound(rectIndex, millis());
+  }
+
+  // (existing) record an attachment timestamp for your old metric (safe to keep)
   if (!this.isInhibitor) {
     if (typeof attachmentTimes !== 'undefined' && attachmentTimes.push) {
       attachmentTimes.push(millis());
@@ -154,27 +174,40 @@ Ball.prototype.attachToRectangle = function (rectIndex) {
   }
 };
 
+
+// DETACH: unchanged logic + NEW occupancy hook (robust to missing rectIndex)
+Ball.prototype.detachFromRectangle = function (rectIndex) {
+  // Some callers (e.g., detachAllLigands in sketch.js) don’t pass rectIndex.
+  // Fall back to the ball’s current receptor slot if omitted.
+  if (rectIndex == null || rectIndex === undefined) {
+    rectIndex = this.attachedRectIndex;
+  }
+
+  // (existing) relaunch with same speed as before attachment
+  const speed = this.storedVelocity ? this.storedVelocity.mag() : 0;
+  let randomDir = p5.Vector.random2D();
+  randomDir.setMag(speed);
+  this.velocity = randomDir;
+
+  // NEW: notify occupancy tracker BEFORE clearing the slot
+  if (typeof markReceptorUnbound === 'function' && Number.isInteger(rectIndex) && rectIndex >= 0) {
+    markReceptorUnbound(rectIndex, millis());
+  }
+
+  // (existing) clear receptor slot and set grace period
+  if (Number.isInteger(rectIndex) && rectIndex >= 0) {
+    attachedLigands[rectIndex] = null;
+  }
+  this.attachedRectIndex = -1;
+  this.gracePeriod = graceDuration;
+};
+
+
 Ball.prototype.handleAttachment = function (rectIndex) {
   this.attachedTime++;
   if (this.attachedTime > detachmentTime) this.detachFromRectangle(rectIndex);
 };
 
-Ball.prototype.detachFromRectangle = function (rectIndex) {
-  // Keep the same speed as storedVelocity
-  const speed = this.storedVelocity ? this.storedVelocity.mag() : 0;
-
-  // Generate a random direction
-  let randomDir = p5.Vector.random2D();
-  randomDir.setMag(speed); // same magnitude as before
-
-  // Assign this as the new velocity
-  this.velocity = randomDir;
-
-  // Clear receptor slot
-  attachedLigands[rectIndex] = null;
-  this.attachedRectIndex = -1;
-  this.gracePeriod = graceDuration;
-};
 
 
 Ball.prototype.handleBoundingBoxCollisions = function () {
