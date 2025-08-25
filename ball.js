@@ -149,6 +149,7 @@ Ball.prototype.bounceOffRectangle = function (rect) {
 // ===============================
 
 // ATTACH: unchanged logic + NEW occupancy hook
+// ATTACH: unchanged logic + NEW occupancy hook (agonists only)
 Ball.prototype.attachToRectangle = function (rectIndex) {
   // (existing) store current velocity so we can relaunch with same speed later
   this.storedVelocity = this.velocity.copy();
@@ -161,8 +162,12 @@ Ball.prototype.attachToRectangle = function (rectIndex) {
   attachedLigands[rectIndex] = this;
   this.attachedRectIndex = rectIndex;
 
-  // NEW: notify occupancy tracker that this receptor just became bound
-  if (typeof markReceptorBound === 'function' && Number.isInteger(rectIndex) && rectIndex >= 0) {
+  // NEW: notify occupancy tracker (only count agonists, not inhibitors)
+  if (
+    !this.isInhibitor &&
+    typeof markReceptorBound === 'function' &&
+    Number.isInteger(rectIndex) && rectIndex >= 0
+  ) {
     markReceptorBound(rectIndex, millis());
   }
 
@@ -175,10 +180,10 @@ Ball.prototype.attachToRectangle = function (rectIndex) {
 };
 
 
-// DETACH: unchanged logic + NEW occupancy hook (robust to missing rectIndex)
+
+// DETACH: unchanged logic + NEW occupancy hook (agonists only, robust index)
 Ball.prototype.detachFromRectangle = function (rectIndex) {
-  // Some callers (e.g., detachAllLigands in sketch.js) don’t pass rectIndex.
-  // Fall back to the ball’s current receptor slot if omitted.
+  // Some callers (e.g., detachAllLigands in sketch.js) don’t pass rectIndex
   if (rectIndex == null || rectIndex === undefined) {
     rectIndex = this.attachedRectIndex;
   }
@@ -189,8 +194,12 @@ Ball.prototype.detachFromRectangle = function (rectIndex) {
   randomDir.setMag(speed);
   this.velocity = randomDir;
 
-  // NEW: notify occupancy tracker BEFORE clearing the slot
-  if (typeof markReceptorUnbound === 'function' && Number.isInteger(rectIndex) && rectIndex >= 0) {
+  // NEW: notify occupancy tracker BEFORE clearing the slot (agonists only)
+  if (
+    !this.isInhibitor &&
+    typeof markReceptorUnbound === 'function' &&
+    Number.isInteger(rectIndex) && rectIndex >= 0
+  ) {
     markReceptorUnbound(rectIndex, millis());
   }
 
@@ -201,6 +210,7 @@ Ball.prototype.detachFromRectangle = function (rectIndex) {
   this.attachedRectIndex = -1;
   this.gracePeriod = graceDuration;
 };
+
 
 
 Ball.prototype.handleAttachment = function (rectIndex) {

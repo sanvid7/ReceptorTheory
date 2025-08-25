@@ -11,6 +11,7 @@ const sliderMax = TARGET_CONC_MAX;
 const yMin = 0;
 const yMax = 14; //adjust graph height
 const MIN_POINTS = 5; // or whatever minimum you want
+const spareReceptorNumber = 6
 
 
 let scene = 'intro'; // start on achGraph again
@@ -125,7 +126,7 @@ function getNormalizedOccupancyFraction() {
   const elapsedMs = now - lastBallCountChangeTime; // timer unchanged (your code)
   if (elapsedMs <= 0) return 0;
   const totalBound = getTotalBoundMs(now); // ms across all receptors
-  const maxPossible = elapsedMs * 8;       // normalize to 8 receptors
+  const maxPossible = elapsedMs * spareReceptorNumber;       // normalize to 8 receptors
   return totalBound / maxPossible;         // 0..1
 }
 
@@ -616,12 +617,13 @@ function mapInhibitorSliderValue(value) {
 // Ligand helpers (preserved behavior)
 function detachAllLigands() {
   for (let i = 0; i < particles.length; i++) {
-    if (particles[i].isAttached) {
-      particles[i].detachFromRectangle();
+    if (particles[i].attachedRectIndex !== -1) {  // real check
+      particles[i].detachFromRectangle();         // rectIndex defaults inside
     }
   }
   attachmentCount = 0;
 }
+
 
 function resetLigandProperties() {
   // Note: attachedLigands is defined in ball.js
@@ -902,7 +904,17 @@ function draw() {
     // HUD text (unchanged positions; new metric)
     noStroke(); textSize(20); fill(180); textAlign(CENTER);
     text(`Ligand Concentration: ${Math.round(concentration)}`, 320, 650);
-    text(`Response (occupancy vs 8): ${(respFraction * 100).toFixed(1)}%`, 320, 680);
+    text(`Response (um of vessel dilation): ${(respFraction * 6).toFixed(2)} um dilation`, 320, 680);
+
+    // Actual receptor occupancy percentage (not graphed, just shown for clarity)
+    const actualReceptors = rectangles.length; // 4 in ACH scene
+    const totalBound = getTotalBoundMs(currentTime);
+    const elapsedMs = currentTime - lastBallCountChangeTime;
+    let occPercent = 0;
+    if (elapsedMs > 0 && actualReceptors > 0) {
+      occPercent = (totalBound / (elapsedMs * actualReceptors)) * 100;
+    }
+    text(`Receptor occupancy: ${occPercent.toFixed(1)}% of ${actualReceptors}`, 320, 710);
 
     // Right visuals
     image(vessel, 660, 10, 600, 400);
@@ -921,11 +933,15 @@ function draw() {
     image(gpcr, 970, 530, 200, 200);
     image(gpcr, 1100, 530, 200, 200);
 
-    fill(255, 0, 0);
-    rect(925, 580, 10, 20);
-    rect(755, 585, 10, 20);
-    rect(1095, 555, 10, 20);
-    rect(1225, 555, 10, 20);
+    // Hitboxes: red = free, green = bound, outlined yellow
+    stroke(255, 255, 102); // yellow outline
+    strokeWeight(2);
+    for (let i = 0; i < rectangles.length; i++) {
+      const r = rectangles[i];
+      const isBound = attachedLigands && attachedLigands[i] !== null;
+      fill(isBound ? color(0, 200, 0) : color(255, 0, 0));
+      rect(r.x, r.y, r.w, r.h);
+    }
 
     // Particles
     stroke(0); noFill();
@@ -999,7 +1015,18 @@ function draw() {
     // HUD text (unchanged positions; new metric)
     noStroke(); textSize(20); fill(180); textAlign(CENTER);
     text(`Ligand Concentration: ${Math.round(concentration)}`, 320, 650);
-    text(`Response (occupancy vs 8): ${(respFraction * 100).toFixed(1)}%`, 320, 680);
+    text(`Response (um of vessel dilation): ${(respFraction * 6).toFixed(2)} um dilation`, 320, 680);
+    
+    // Actual receptor occupancy percentage (not graphed, just shown for clarity)
+    const actualReceptors = rectangles.length; // 4 in ACH scene
+    const totalBound = getTotalBoundMs(currentTime);
+    const elapsedMs = currentTime - lastBallCountChangeTime;
+    let occPercent = 0;
+    if (elapsedMs > 0 && actualReceptors > 0) {
+      occPercent = (totalBound / (elapsedMs * actualReceptors)) * 100;
+    }
+    text(`Receptor occupancy: ${occPercent.toFixed(1)}% of ${actualReceptors}`, 320, 710);
+
 
     // Right visuals (heart)
     image(heart, 660, 10, 600, 400);
@@ -1014,11 +1041,20 @@ function draw() {
 
     // 6 GPCRs (smaller) + binding rectangles
     {
-      const { gpcrPos, rects, size } = getHeartLayout();
+      const { gpcrPos, size } = getHeartLayout();
       for (const p of gpcrPos) image(gpcr, p.x, p.y, size, size);
-      fill(255, 0, 0); noStroke();
-      for (const r of rects) rect(r.x, r.y, r.w, r.h);
+    
+      // Hitboxes: red = free, green = bound, outlined yellow
+      stroke(255, 255, 102); // yellow outline
+      strokeWeight(2);
+      for (let i = 0; i < rectangles.length; i++) {
+        const r = rectangles[i];
+        const isBound = attachedLigands && attachedLigands[i] !== null;
+        fill(isBound ? color(0, 200, 0) : color(255, 0, 0));
+        rect(r.x, r.y, r.w, r.h);
+      }
     }
+    
 
     // Particles
     stroke(0); noFill();
