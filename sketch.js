@@ -386,9 +386,10 @@ function initializeScene(sceneName) {
       }
       slider.show();
       pointButton.show();
-      continueButton.show();
       inhibitorSlider.hide();
+      graphPlotted = false;
       inhibitorButton.hide();
+      continueButton.hide();   // reset button when entering heartGraph
       break;
     }
     case 'compareGraphs': {
@@ -1016,7 +1017,7 @@ function draw() {
     noStroke(); textSize(20); fill(180); textAlign(CENTER);
     text(`Ligand Concentration: ${Math.round(concentration)}`, 320, 650);
     text(`Response (um of vessel dilation): ${(respFraction * 6).toFixed(2)} um dilation`, 320, 680);
-    
+
     // Actual receptor occupancy percentage (not graphed, just shown for clarity)
     const actualReceptors = rectangles.length; // 4 in ACH scene
     const totalBound = getTotalBoundMs(currentTime);
