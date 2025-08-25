@@ -54,7 +54,7 @@ let clarkButton, mrtButton, compareButton;
 let w = 640;
 let h = 500;
 let unit = 20;
-let muscleStrip, sarcolemma, receptor, gpcr, vessel, heart;
+let muscleStrip, membrane, receptor, gpcr, vessel, heart;
 let AchBackgroundX = 0;
 let fade = 0;
 
@@ -136,7 +136,7 @@ function getNormalizedOccupancyFraction() {
 // ─────────────────────────────────────────────
 function preload() {
   muscleStrip = loadImage('musclestrip.png');
-  sarcolemma = loadImage('sarcolemma.png');
+  membrane = loadImage('membrane.png');
   receptor = loadImage('receptor.png');
   gpcr = loadImage('gpcr.png');
   vessel = loadImage('vessel.png');
@@ -297,7 +297,7 @@ function getAchRectangles() {
 // 6 GPCRs in a single horizontal line for heartGraph.
 // Sprites are smaller so all six fit; binding rectangles remain 10×20.
 function getHeartLayout() {
-  const left = 660;   // leftmost sprite x
+  const left = 680;   // leftmost sprite x
   const right = 1240; // rightmost boundary to stay inside the membrane
   const y = 560;      // vertical position of the GPCR row
   const count = 6;
@@ -926,12 +926,12 @@ function draw() {
     line(975, 110, 1280, 300);
     line(640, 300, 1280, 300);
 
-    image(sarcolemma, 640, 300, 640, 640);
+    image(membrane, 640, 580, 750, 105);
 
     // 4 GPCRs + binding rectangles
-    image(gpcr, 630, 560, 200, 200);
-    image(gpcr, 800, 555, 200, 200);
-    image(gpcr, 970, 530, 200, 200);
+    image(gpcr, 630, 530, 200, 200);
+    image(gpcr, 790, 530, 200, 200);
+    image(gpcr, 950, 530, 200, 200);
     image(gpcr, 1100, 530, 200, 200);
 
     // Hitboxes: red = free, green = bound, outlined yellow
@@ -1038,7 +1038,7 @@ function draw() {
     line(975, 110, 1280, 300);
     line(640, 300, 1280, 300);
 
-    image(sarcolemma, 640, 300, 640, 640);
+    image(membrane, 635, 575, 665, 60);
 
     // 6 GPCRs (smaller) + binding rectangles
     {
