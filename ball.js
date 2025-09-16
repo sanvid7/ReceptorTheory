@@ -31,7 +31,7 @@ function setReceptorLayout(rects) {
 }
 
 // -------------------------------
-// Ball class (with per-instance bounds)
+// Ball class
 // -------------------------------
 function Ball(pos, vel, radius, identity, others, color, follow, bounds = null, isInhibitor = false, isLigand = false, isWhiteBall = false) {
   this.coeficient = 1;

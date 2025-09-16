@@ -1130,14 +1130,17 @@ function draw() {
 
     // Title + legend
     noStroke(); fill(100); textAlign(CENTER); textSize(22);
-    text('ACH vs HEART — Overlaid Graphs', 320, 40);
+    text('Comparison of Response', 320, 40);
 
-    textAlign(LEFT); const lx = 100, ly = 70;
+    textAlign(LEFT);
+    // Move legend further down so it doesn't overlap axis titles/tick numbers
+    let lx = w - 275;
+    let ly = h + 15;
     fill(220, 20, 60); rect(lx, ly - 12, 18, 8);  // ACH swatch
     fill(30, 144, 255); rect(lx, ly + 8, 18, 8);  // HEART swatch
     fill(60); textSize(16);
-    text('ACH', lx + 26, ly - 4);
-    text('HEART', lx + 26, ly + 16);
+    text('Diaphragm (4 Receptors)', lx + 26, ly - 4);
+    text('Intestine (6 Receptors)', lx + 26, ly + 16);
 
         // Contextual explanation for Clark's 5 postulates
     fill(0);
@@ -1152,8 +1155,79 @@ function draw() {
     } else if (postulatePage === 2) {
       text(postulates[2], tx, ty + spacing);
       text(postulates[3], tx, ty + 2 * spacing);
+
+      // Highlight difference in maximal response (Postulate 3)
+      if (achSnapshot?.curve?.params && heartSnapshot?.curve?.params) {
+        // Helper to get the minimum y (highest in screen coords) of the sampled fitted curve
+        function getCurveMaxY(params) {
+          const poly = sampleFittedCurve(params, 1); // array of {x, y} in screen coords
+          let maxPoint = poly.reduce((a, b) => (a.y < b.y ? a : b)); // smaller screen y = higher
+          return maxPoint.y;
+        }
+        const yAch = getCurveMaxY(achSnapshot.curve.params);
+        const yHeart = getCurveMaxY(heartSnapshot.curve.params);
+
+        // Draw a double-sided arrow between yAch and yHeart at x=560
+        push();
+        stroke(128, 0, 128); // purple
+        strokeWeight(2);
+
+        // main line
+        line(560, yAch, 560, yHeart);
+
+        const arrowSize = 8;
+
+        // arrowhead at yAch
+        line(560 - arrowSize / 2, yAch + (yAch < yHeart ? arrowSize : -arrowSize), 560, yAch);
+        line(560 + arrowSize / 2, yAch + (yAch < yHeart ? arrowSize : -arrowSize), 560, yAch);
+
+        // arrowhead at yHeart
+        line(560 - arrowSize / 2, yHeart + (yHeart > yAch ? -arrowSize : arrowSize), 560, yHeart);
+        line(560 + arrowSize / 2, yHeart + (yHeart > yAch ? -arrowSize : arrowSize), 560, yHeart);
+
+        noStroke();
+        fill(0);
+        text("Different max responses", 570, (yAch + yHeart) / 2);
+        pop();
+      }
+
+      // Highlight proportionality (Postulate 4)
+      stroke(0, 150, 0);
+      strokeWeight(1);
+      drawingContext.setLineDash([5, 5]);
+      const midX = map(TARGET_CONC_MAX/2, sliderMin, sliderMax, 80, w - 80);
+      line(midX, h - 80, midX, 80);
+      drawingContext.setLineDash([]);
+      noStroke();
+      fill(0);
+      text("Effect tracks occupancy", midX + 10, 100);
     } else if (postulatePage === 3) {
       text(postulates[4], tx, ty + spacing);
+
+      // Visual evidence: show a single (GPCR) receptor — centered within the postulate's horizontal bounds
+      const postulateY = ty + spacing; // y of the postulate 5 line
+      const leftBound = tx;            // left boundary aligns with postulate text start
+      const rightBound = 1280 - 40;    // keep a 40px right margin inside the pane
+      const cx = (leftBound + rightBound) / 2; // center between bounds
+
+      const imgW = 220;  // slightly smaller for better balance
+      const imgH = 220;
+      const gap = 90;    // vertical gap below the postulate text
+      const cy = postulateY + gap + imgH / 2;
+
+      if (gpcr) {
+        imageMode(CENTER);
+        image(gpcr, cx, cy, imgW, imgH);
+        imageMode(CORNER);
+      }
+
+      // Caption centered below the receptor
+      noStroke();
+      fill(0);
+      textSize(18);
+      textAlign(CENTER, TOP);
+      text("Single receptor", cx, cy + imgH / 2 + 16);
+      textAlign(LEFT, BASELINE);
     }
     if (showEvidence) {
       drawMiniEvidence();
