@@ -48,6 +48,15 @@ let heartSnapshot = null; // { label, color, points, curve }
 let slider, inhibitorSlider;
 let pointButton, graphButton, continueButton, inhibitorButton;
 let clarkButton, mrtButton, compareButton;
+let postulateButton;
+let postulatePage = 0; // 0 = none, 1 = first two, 2 = next two, 3 = last one
+const postulates = [
+  "1. Drug action depends on receptor binding.",
+  "2. Binding is reversible and saturable.",
+  "3. Maximum response occurs at full receptor occupancy.",
+  "4. Drug effect is proportional to receptor occupancy.",
+  "5. Drugs act through a single type of receptor."
+];
 
 // Canvas/graphics variables
 let w = 640;
@@ -93,6 +102,13 @@ function setup() {
   initializeScene(scene);
 
 }
+
+let evidenceParticles = [];      // mini ligand balls for flashback
+let evidenceReceptor;            // position of the mini receptor
+let evidenceConcentration = 5;   // number of ligands
+let showEvidence = false;        // whether to display flashback
+
+
 
 // ─────────────────────────────────────────────
 // UI Creation Functions
@@ -161,6 +177,14 @@ function createActionButtons() {
   fitButton.id('fitSigmoidButton');
   fitButton.mousePressed(handleFitSigmoidClick);
   fitButton.class('button-base button-blue');
+  
+  postulateButton = createButton("Clark's Postulates");
+  postulateButton.id("postulateButton");
+  postulateButton.mousePressed(handlePostulateButtonClick);
+  postulateButton.class("button-base button-green");
+  postulateButton.hide();
+
+
   
   
 
@@ -272,6 +296,7 @@ function hideUIElements() {
   if (clarkButton) clarkButton.hide();
   if (mrtButton) mrtButton.hide();
   if (compareButton) compareButton.hide();
+  if (postulateButton) postulateButton.hide();
 
 }
 
@@ -327,6 +352,12 @@ function initializeScene(sceneName) {
     case 'compareGraphs': {
       // comparison: graph only on left, right pane whited out
       hideUIElements();
+      if (postulateButton) {
+        postulateButton.show();
+        postulateButton.position(700, 600);
+        postulateButton.html("Clark's Postulates");
+      }
+      postulatePage = 0;
       break;
     }
 
@@ -413,6 +444,83 @@ function handleInhibitorButtonClick() {
     detachAllLigands();
     horizontalShift = map(mappedInhibitorValue, -12, 12, -4, 4);
     inhibitorButtonClicked = true;
+  }
+}
+//Postulate Button Stuff  
+function handlePostulateButtonClick() {
+  postulatePage++;
+
+  if (postulatePage === 1) {
+    postulateButton.html("Next Postulates");
+    showEvidence = true;
+
+    evidenceParticles = [];
+
+    const miniX = 700;
+    const miniY = 150;
+    const miniWidth = 300;
+    const miniHeight = 120; // increased height for mini simulation
+
+    const receptorWidth = 80;
+    const receptorHeight = 80;
+
+    // Receptor positioned at bottom of mini simulation, on top of membrane
+    const receptorX = miniX + miniWidth / 2 - receptorWidth / 2;
+    const receptorY = miniY + miniHeight - receptorHeight / 2; // receptor overlaps membrane
+
+    evidenceReceptor = { x: receptorX, y: receptorY };
+
+    // Bounds for mini balls: full mini simulation area above receptor
+    const bounds = {
+      x: miniX,
+      y: miniY,
+      w: miniWidth,
+      h: receptorY - miniY
+    };
+
+    for (let i = 0; i < evidenceConcentration; i++) {
+      let pos = createVector(
+        random(bounds.x + 10, bounds.x + bounds.w - 10),
+        random(bounds.y + 10, bounds.y + bounds.h - 10)
+      );
+      let vel = p5.Vector.random2D().mult(1.5);
+      evidenceParticles.push(new Ball(pos, vel, radius, i, [], "cyan", false, bounds));
+    }
+
+  } else if (postulatePage === 2) {
+    postulateButton.html("Final Postulate");
+    showEvidence = false;
+    evidenceParticles = [];
+  } else if (postulatePage >= 3) {
+    postulateButton.hide();
+    showEvidence = false;
+    evidenceParticles = [];
+  }
+}
+
+// Mini Simulation as Evidence
+
+function drawMiniEvidence() {
+  if (!showEvidence) return;
+
+  const miniX = 700;
+  const miniY = 150;
+  const miniWidth = 300;
+  const miniHeight = 120; // updated to match handlePostulateButtonClick
+
+  // Draw membrane image at the bottom of the mini simulation area
+  image(membrane, miniX, miniY + miniHeight - 20, miniWidth, 40);
+
+  // Draw receptor on top of membrane
+  if (evidenceReceptor) {
+    image(gpcr, evidenceReceptor.x, evidenceReceptor.y, 80, 80);
+  }
+
+  // Draw mini balls
+  for (let p of evidenceParticles) {
+    p.bounceOthers();
+    p.update();
+    p.display();
   }
 }
 
@@ -1030,6 +1138,27 @@ function draw() {
     fill(60); textSize(16);
     text('ACH', lx + 26, ly - 4);
     text('HEART', lx + 26, ly + 16);
+
+        // Contextual explanation for Clark's 5 postulates
+    fill(0);
+    textAlign(LEFT);
+    textSize(16);
+    let tx = 700, ty = 50, spacing = 22; // moved up from ty = 120
+    text("Clark’s 5 Postulates:", tx, ty);
+
+    if (postulatePage === 1) {
+      text(postulates[0], tx, ty + spacing);
+      text(postulates[1], tx, ty + 2 * spacing);
+    } else if (postulatePage === 2) {
+      text(postulates[2], tx, ty + spacing);
+      text(postulates[3], tx, ty + 2 * spacing);
+    } else if (postulatePage === 3) {
+      text(postulates[4], tx, ty + spacing);
+    }
+    if (showEvidence) {
+      drawMiniEvidence();
+    }
+
 
     // Draw saved snapshots
     drawSnapshot(achSnapshot);

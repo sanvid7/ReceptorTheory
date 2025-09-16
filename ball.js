@@ -31,13 +31,13 @@ function setReceptorLayout(rects) {
 }
 
 // -------------------------------
-// Ball class
+// Ball class (with per-instance bounds)
 // -------------------------------
-function Ball(pos, vel, radius, identity, others, color, follow, isInhibitor = false, isLigand = false, isWhiteBall = false) {
+function Ball(pos, vel, radius, identity, others, color, follow, bounds = null, isInhibitor = false, isLigand = false, isWhiteBall = false) {
   this.coeficient = 1;
   this.position = pos.copy ? pos.copy() : pos;
   this.velocity = vel.copy ? vel.copy() : vel;
-  this.acceleration = createVector(0, 0); // keep defined to avoid NaNs
+  this.acceleration = createVector(0, 0);
   this.id = identity;
   this.others = others;
   this.r = radius;
@@ -59,6 +59,9 @@ function Ball(pos, vel, radius, identity, others, color, follow, isInhibitor = f
   this.isInhibitor = isInhibitor;
   this.isLigand = isLigand;
   this.isWhiteBall = isWhiteBall;
+
+  // New: assign independent bounds or fallback to global
+  this.bounds = bounds || boundingBox;
 }
 
 Ball.prototype.update = function () {
@@ -178,18 +181,18 @@ Ball.prototype.detachFromRectangle = function (rectIndex) {
 
 
 Ball.prototype.handleBoundingBoxCollisions = function () {
-  if (this.position.x > boundingBox.x + boundingBox.w - this.r) {
-    this.position.x = boundingBox.x + boundingBox.w - this.r;
+  if (this.position.x > this.bounds.x + this.bounds.w - this.r) {
+    this.position.x = this.bounds.x + this.bounds.w - this.r;
     this.velocity.x *= -1 * this.coeficient;
-  } else if (this.position.x < boundingBox.x + this.r) {
-    this.position.x = boundingBox.x + this.r;
+  } else if (this.position.x < this.bounds.x + this.r) {
+    this.position.x = this.bounds.x + this.r;
     this.velocity.x *= -1 * this.coeficient;
   }
-  if (this.position.y > boundingBox.y + boundingBox.h - this.r) {
-    this.position.y = boundingBox.y + boundingBox.h - this.r;
+  if (this.position.y > this.bounds.y + this.bounds.h - this.r) {
+    this.position.y = this.bounds.y + this.bounds.h - this.r;
     this.velocity.y *= -1 * this.coeficient;
-  } else if (this.position.y < boundingBox.y + this.r) {
-    this.position.y = boundingBox.y + this.r;
+  } else if (this.position.y < this.bounds.y + this.r) {
+    this.position.y = this.bounds.y + this.r;
     this.velocity.y *= -1 * this.coeficient;
   }
 };
