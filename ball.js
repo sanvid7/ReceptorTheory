@@ -144,9 +144,24 @@ Ball.prototype.bounceOffRectangle = function (rect) {
 };
 
 Ball.prototype.attachToRectangle = function (rectIndex) {
+  // MRT binding probability — only when a drug type is active
+  if (typeof mrtDrugType !== 'undefined' && mrtDrugType !== 'none') {
+    const isRStar = (typeof mrtBasalStates !== 'undefined') && mrtBasalStates[rectIndex];
+    let canBind = false;
+    if      (mrtDrugType === 'fullAgonist')    canBind = isRStar;
+    else if (mrtDrugType === 'partialAgonist') canBind = Math.random() < (isRStar ? 0.66 : 0.33);
+    else if (mrtDrugType === 'antagonist')     canBind = true;
+    else if (mrtDrugType === 'partialInverse') canBind = Math.random() < (isRStar ? 0.33 : 0.66);
+    else if (mrtDrugType === 'fullInverse')    canBind = !isRStar;
+    if (!canBind) {
+      this.bounceOffRectangle(rectangles[rectIndex]);
+      return;
+    }
+  }
+
   this.storedVelocity = this.velocity.copy();
   let rect = rectangles[rectIndex];
-  this.startAnimation(createVector(rect.x + rect.w / 2, rect.y + rect.h / 2));
+  this.startAnimation(createVector(rect.x + rect.w / 2, rect.y + rect.h));
   attachedLigands[rectIndex] = this;
   this.attachedRectIndex = rectIndex;
 
@@ -154,6 +169,7 @@ Ball.prototype.attachToRectangle = function (rectIndex) {
     if (typeof attachmentTimes !== 'undefined' && attachmentTimes.push) {
       attachmentTimes.push(millis());
     }
+    // (P1+P2 spotlight fires from handlePointButtonClick on first "Record It!" click)
   }
 };
 
@@ -177,6 +193,7 @@ Ball.prototype.detachFromRectangle = function (rectIndex) {
   attachedLigands[rectIndex] = null;
   this.attachedRectIndex = -1;
   this.gracePeriod = graceDuration;
+
 };
 
 
